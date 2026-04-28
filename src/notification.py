@@ -1802,9 +1802,15 @@ def send_daily_report(results: List[AnalysisResult]) -> bool:
     # 保存到本地
     service.save_report_to_file(report)
     
-    # 推送到配置的渠道（自动识别）
-    return service.send(report)
+    # 先推送总报告
+    service.send(report)
 
+    # 再逐股推送，每只股票一条消息
+    for r in results:
+        single_report = service.generate_single_stock_report(r)
+        service.send(single_report)
+
+    return True
 
 if __name__ == "__main__":
     # 测试代码

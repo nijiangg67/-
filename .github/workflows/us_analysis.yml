@@ -1,9 +1,9 @@
 name: 美股分析
 
 on:
-  # 定时触发 - 每天北京时间 8:00 (UTC 0:00)
+  # 定时触发 - 每天美东时间 18:00 (UTC 22:00)
   schedule:
-    - cron: '0 0 * * 1-5'     # 周一到周五，UTC 0:00 = 北京时间 8:00
+    - cron: '0 22 * * 1-5'     # 周一到周五，UTC 22:00 = 美东时间 18:00
   
   # 手动触发
   workflow_dispatch:
@@ -30,6 +30,7 @@ concurrency:
 
 jobs:
   analyze:
+    environment: us    
     runs-on: ubuntu-latest
     # 添加超时限制，防止任务卡死
     timeout-minutes: ${{ fromJSON(vars.ANALYSIS_TIMEOUT_MINUTES || '30') }}

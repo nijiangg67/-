@@ -156,7 +156,7 @@ _GENERIC_STOCK_NAME_BY_LANGUAGE = {
 
 _REPORT_LABELS: Dict[str, Dict[str, str]] = {
     "zh": {
-        "dashboard_title": "决策仪表盘",
+        "dashboard_title": "智能股票决策仪表盘",
         "brief_title": "决策简报",
         "analyzed_prefix": "共分析",
         "stock_unit": "只股票",
@@ -227,7 +227,7 @@ _REPORT_LABELS: Dict[str, Dict[str, str]] = {
         "generated_at_label": "报告生成时间",
         "report_time_label": "生成时间",
         "no_results": "无分析结果",
-        "report_title": "股票分析报告",
+        "report_title": "智能股票分析报告",
         "avg_score_label": "均分",
         "action_points_heading": "操作点位",
         "position_advice_heading": "持仓建议",

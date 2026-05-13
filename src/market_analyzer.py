@@ -163,10 +163,7 @@ class MarketAnalyzer:
         return f"{amount_raw:.0f}"
 
     def _get_review_title(self, date: str) -> str:
-        if self._get_review_language() == "en":
-            market_name = "US Market Recap" if self.region == "us" else "A-share Market Recap"
-            return f"## {date} {market_name}"
-        return f"## {date} 大盘复盘"
+                return f"## {date} 大盘复盘"
 
     def _get_index_hint(self) -> str:
         if self._get_review_language() == "en":

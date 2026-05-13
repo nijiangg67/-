@@ -1,9 +1,9 @@
 name: 美股分析
 
 on:
-  # 定时触发 - 每天美东时间 18:00 (UTC 22:00)
+  # 定时触发 - 每天美东时间 17:49 (UTC 21:49)
   schedule:
-    - cron: '0 22 * * 1-5'     # 周一到周五，UTC 22:00 = 美东时间 18:00
+    - cron: '0 22 * * 1-5'     # 周一到周五，UTC 21:49 = 美东时间 17:49
   
   # 手动触发
   workflow_dispatch:
@@ -25,7 +25,7 @@ on:
 
 # 并发控制：同一时间只运行一个分析任务
 concurrency:
-  group: stock-analysis
+  group: stock-analysis-us
   cancel-in-progress: false
 
 jobs:

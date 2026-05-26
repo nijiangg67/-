@@ -37,7 +37,8 @@ import requests
 
 def _make_config(**overrides) -> Config:
     """Create a Config instance overriding only notification-related fields."""
-    return Config(stock_list=[], **overrides)
+    stock_list = overrides.pop("stock_list", [])
+    return Config(stock_list=stock_list, **overrides)
 
 
 def _make_response(status_code: int, json: Optional[dict] = None) -> requests.Response:
@@ -408,6 +409,49 @@ class TestNotificationServiceReportGeneration(unittest.TestCase):
 
         self.assertTrue(ok)
         mock_post.assert_called_once()
+
+    @mock.patch("src.notification.get_config")
+    @mock.patch("requests.post")
+    def test_send_to_feishu_uses_us_stock_card_title(
+        self, mock_post: mock.MagicMock, mock_get_config: mock.MagicMock
+    ):
+        cfg = _make_config(
+            feishu_webhook_url="https://feishu.example",
+            stock_list=["AAPL", "MSFT"],
+        )
+        mock_get_config.return_value = cfg
+        mock_post.return_value = _make_response(200, {"code": 0})
+
+        service = NotificationService()
+
+        ok = service.send("# 2026-05-26 决策仪表盘\n\n**Apple Inc.(AAPL)**: 观望")
+
+        self.assertTrue(ok)
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(
+            payload["card"]["header"]["title"]["content"],
+            "美股个股报告",
+        )
+
+    @mock.patch("src.notification.get_config")
+    @mock.patch("requests.post")
+    def test_send_to_feishu_uses_us_market_review_card_title(
+        self, mock_post: mock.MagicMock, mock_get_config: mock.MagicMock
+    ):
+        cfg = _make_config(feishu_webhook_url="https://feishu.example")
+        mock_get_config.return_value = cfg
+        mock_post.return_value = _make_response(200, {"code": 0})
+
+        service = NotificationService()
+
+        ok = service.send("🎯 大盘复盘\n\n# 美股大盘复盘\n\n市场震荡")
+
+        self.assertTrue(ok)
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(
+            payload["card"]["header"]["title"]["content"],
+            "美股大盘报告",
+        )
         
     @mock.patch("src.notification.get_config")
     @mock.patch("requests.post")

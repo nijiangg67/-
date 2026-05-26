@@ -9,6 +9,7 @@ import base64
 import hashlib
 import hmac
 import logging
+import re
 import time
 from typing import Any, Dict
 
@@ -40,6 +41,7 @@ class FeishuSender:
         self._feishu_keyword = (getattr(config, 'feishu_webhook_keyword', None) or '').strip()
         self._feishu_max_bytes = getattr(config, 'feishu_max_bytes', 20000)
         self._webhook_verify_ssl = getattr(config, 'webhook_verify_ssl', True)
+        self._stock_list = list(getattr(config, 'stock_list', []) or [])
 
     def _get_keyword_prefix(self) -> str:
         """Return the keyword prefix required by Feishu webhook security settings."""
@@ -71,6 +73,20 @@ class FeishuSender:
             "timestamp": timestamp,
             "sign": sign,
         }
+
+    def _detect_card_title(self, content: str) -> str:
+        """Infer the Feishu card title from the report body."""
+        if "美股大盘复盘" in content or "US Market Recap" in content:
+            return "美股大盘报告"
+
+        for code in self._stock_list:
+            normalized_code = str(code or "").strip().upper()
+            if not normalized_code or not any(ch.isalpha() for ch in normalized_code):
+                continue
+            if re.search(rf"(?<![A-Z0-9]){re.escape(normalized_code)}(?![A-Z0-9])", content, re.IGNORECASE):
+                return "美股个股报告"
+
+        return "A股智能分析报告"
     
           
     def send_to_feishu(self, content: str) -> bool:
@@ -115,6 +131,8 @@ class FeishuSender:
             logger.warning("飞书 Webhook 未配置，跳过推送")
             return False
         
+        card_title = self._detect_card_title(content)
+
         # 飞书 lark_md 支持有限，先做格式转换
         formatted_content = format_feishu_markdown(content)
 
@@ -138,15 +156,15 @@ class FeishuSender:
                 )
                 return False
             logger.info(f"飞书消息内容超长({content_bytes}字节/{len(content)}字符)，将分批发送")
-            return self._send_feishu_chunked(formatted_content, effective_max_bytes)
+            return self._send_feishu_chunked(formatted_content, effective_max_bytes, card_title)
         
         try:
-            return self._send_feishu_message(formatted_content)
+            return self._send_feishu_message(formatted_content, card_title)
         except Exception as e:
             logger.error(f"发送飞书消息失败: {e}")
             return False
    
-    def _send_feishu_chunked(self, content: str, max_bytes: int) -> bool:
+    def _send_feishu_chunked(self, content: str, max_bytes: int, card_title: str) -> bool:
         """
         分批发送长消息到飞书
         
@@ -173,7 +191,7 @@ class FeishuSender:
         
         for i, chunk in enumerate(chunks):
             try:
-                if self._send_feishu_message(chunk):
+                if self._send_feishu_message(chunk, card_title):
                     success_count += 1
                     logger.info(f"飞书第 {i+1}/{total_chunks} 批发送成功")
                 else:
@@ -187,7 +205,7 @@ class FeishuSender:
         
         return success_count == total_chunks
     
-    def _send_feishu_message(self, content: str) -> bool:
+    def _send_feishu_message(self, content: str, card_title: str) -> bool:
         """发送单条飞书消息（优先使用 Markdown 卡片）"""
         prepared_content = self._apply_keyword_prefix(content)
         security_fields = self._build_security_fields()
@@ -233,7 +251,7 @@ class FeishuSender:
                 "header": {
                     "title": {
                         "tag": "plain_text",
-                        "content": "A股智能分析报告"
+                        "content": card_title
                     }
                 },
                 "elements": [

@@ -76,7 +76,12 @@ class FeishuSender:
 
     def _detect_card_title(self, content: str) -> str:
         """Infer the Feishu card title from the report body."""
-        if "美股大盘复盘" in content or "US Market Recap" in content:
+        us_market_terms = ("美股", "美国股市", "纳斯达克", "标普", "道琼斯", "S&P", "NASDAQ", "Dow Jones")
+        if (
+            "美股大盘复盘" in content
+            or "US Market Recap" in content
+            or ("大盘复盘" in content and any(term in content for term in us_market_terms))
+        ):
             return "美股大盘报告"
 
         for code in self._stock_list:

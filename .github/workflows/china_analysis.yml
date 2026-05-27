@@ -4,6 +4,13 @@ on:
   # 定时触发 - 每个交易日北京时间 16:52 (UTC 08:52)
   schedule:
     - cron: '52 08 * * 1-5'     # 周一到周五，UTC 08:52 = 北京时间 16:52
+
+  # 修改本 workflow 后自动补跑一次 A股大盘复盘，便于修复定时任务后立即验证推送
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/china_analysis.yml'
   
   # 手动触发
   workflow_dispatch:
@@ -295,8 +302,11 @@ jobs:
             echo "✅ LITELLM 配置文件已写入: $LITELLM_CONFIG"
           fi
 
-          # 判断运行模式
-          MODE="${{ github.event.inputs.mode || 'full' }}"
+          # 判断运行模式：定时/工作流修复推送默认只跑大盘复盘；手动触发可选择 full/stocks-only
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            MODE="market-only"
+          fi
           
           echo "=========================================="
           echo "🚀 A股自选股智能分析系统"

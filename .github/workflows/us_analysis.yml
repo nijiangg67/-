@@ -56,7 +56,48 @@ jobs:
       - name: 创建必要目录
         run: |
           mkdir -p data logs reports
-      
+
+      - name: 选择美股每日自选股
+        env:
+          RAW_STOCK_LIST: ${{ vars.STOCK_LIST || secrets.STOCK_LIST || '600519' }}
+          US_FIXED_STOCK_LIST: ${{ vars.US_FIXED_STOCK_LIST || secrets.US_FIXED_STOCK_LIST || 'PDD,PMRTY' }}
+          US_ROTATING_STOCK_LIST: ${{ vars.US_ROTATING_STOCK_LIST || secrets.US_ROTATING_STOCK_LIST || '' }}
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          import os
+          import time
+
+          def parse_codes(value):
+              seen = set()
+              codes = []
+              for item in (value or "").split(","):
+                  code = item.strip().upper()
+                  if code and code not in seen:
+                      seen.add(code)
+                      codes.append(code)
+              return codes
+
+          raw = parse_codes(os.getenv("RAW_STOCK_LIST", ""))
+          fixed = parse_codes(os.getenv("US_FIXED_STOCK_LIST", "PDD,PMRTY"))
+          configured_rotating = parse_codes(os.getenv("US_ROTATING_STOCK_LIST", ""))
+          rotating = configured_rotating or [code for code in raw if code not in set(fixed)]
+
+          # 北京时间 05:52 触发，用 UTC+8 的 epoch day 做稳定的每日轮换索引。
+          day_index = int((time.time() + 8 * 3600) // 86400)
+          selected = [rotating[day_index % len(rotating)]] if rotating else []
+
+          effective = []
+          for code in selected + fixed:
+              if code not in effective:
+                  effective.append(code)
+
+          print(f"STOCK_LIST={','.join(effective)}")
+          print(f"US_RAW_STOCK_LIST={','.join(raw)}")
+          print(f"US_ROTATING_STOCK_LIST_EFFECTIVE={','.join(rotating)}")
+          print(f"US_SELECTED_ROTATING_STOCK={','.join(selected)}")
+          print(f"US_FIXED_STOCK_LIST_EFFECTIVE={','.join(fixed)}")
+          PY
+
       - name: 执行股票分析
         env:
           # ==========================================
@@ -259,7 +300,6 @@ jobs:
           # ==========================================
           # 自选股配置
           # ==========================================
-          STOCK_LIST: ${{ vars.STOCK_LIST || secrets.STOCK_LIST || '600519' }}
           MARKET_REVIEW_REGION: us
           
           # ==========================================
@@ -303,6 +343,10 @@ jobs:
           echo "=========================================="
           echo "⏰ 时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
           echo "🎯 运行模式: $MODE"
+          echo "📚 原始美股列表: $US_RAW_STOCK_LIST"
+          echo "🔁 轮换股票池: $US_ROTATING_STOCK_LIST_EFFECTIVE"
+          echo "📌 每日固定股票: $US_FIXED_STOCK_LIST_EFFECTIVE"
+          echo "🎲 今日轮换股票: $US_SELECTED_ROTATING_STOCK"
           echo "📊 自选股: $STOCK_LIST"
           echo "📝 报告类型: $REPORT_TYPE"
           echo ""
